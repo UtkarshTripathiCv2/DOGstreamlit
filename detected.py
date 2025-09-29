@@ -176,7 +176,7 @@ def generate_pdf_report(original_img, annotated_img, detections, uploaded_filena
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 10, 'No objects detected above the confidence threshold.', 0, 1)
         
-    return pdf.output(dest='S').encode('latin1')
+    return pdf.output(dest='S')
 
 
 # --- Caching and Model Loading ---
@@ -389,3 +389,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
