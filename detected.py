@@ -176,8 +176,12 @@ def generate_pdf_report(original_img, annotated_img, detections, uploaded_filena
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 10, 'No objects detected above the confidence threshold.', 0, 1)
         
-    # Return the PDF as a bytes object directly for robust deployment
-    return pdf.output(dest='B')
+    # Robust fix: Save to a temporary file and read back in binary mode
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
+        pdf.output(temp_pdf.name)
+        with open(temp_pdf.name, "rb") as f:
+            pdf_bytes = f.read()
+    return pdf_bytes
 
 
 # --- Caching and Model Loading ---
