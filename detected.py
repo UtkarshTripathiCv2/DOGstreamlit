@@ -176,7 +176,11 @@ def generate_pdf_report(original_img, annotated_img, detections, uploaded_filena
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 10, 'No objects detected above the confidence threshold.', 0, 1)
         
-    return pdf.output(dest='S').encode('latin1')
+    # Robustly handle FPDF output for Streamlit deployment
+    output = pdf.output(dest='S')
+    if isinstance(output, str):
+        return output.encode('latin1')
+    return output
 
 
 # --- Caching and Model Loading ---
