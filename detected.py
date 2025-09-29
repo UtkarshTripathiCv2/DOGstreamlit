@@ -24,7 +24,7 @@ st.markdown("""
 
 /* Main App Styling */
 .stApp {
-    background-image: url("https://images.unsplash.com/photo-1495534027489-3543734d35e1?q=80&w=1932&auto=format&fit=crop");
+    background-image: url("https://images.unsplash.com/photo-1495534027489-3543734d35e1?q=80&w=1932&auto-format&fit=crop");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -176,7 +176,7 @@ def generate_pdf_report(original_img, annotated_img, detections, uploaded_filena
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 10, 'No objects detected above the confidence threshold.', 0, 1)
         
-    return pdf.output(dest='S')
+    return pdf.output(dest='S').encode('latin1')
 
 
 # --- Caching and Model Loading ---
