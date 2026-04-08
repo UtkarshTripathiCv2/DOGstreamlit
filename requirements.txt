@@ -1,7 +1,6 @@
+fpdf2
 streamlit
 ultralytics
 opencv-python-headless
-streamlit-webrtc
-fpdf2
 numpy
 Pillow
