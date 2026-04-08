@@ -3,3 +3,5 @@ ultralytics
 opencv-python-headless
 streamlit-webrtc
 fpdf2
+numpy
+Pillow
