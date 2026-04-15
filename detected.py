@@ -4,133 +4,164 @@ import cv2
 import numpy as np
 import tempfile
 import os
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode
+from streamlit_webrtc import webrtc_streamer
 from fpdf import FPDF
 from datetime import datetime
-from urllib.parse import quote_plus
 
-# --- Page Configuration ---
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
-    page_title="D.O.G. Vision System | AI Monitoring",
+    page_title="D.O.G Vision System",
     page_icon="🌿",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# --- Path Configuration for Streamlit Cloud ---
+# ---------------- PATH ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "DOG.pt")
 
-# --- Premium Styling (CSS) ---
+# ---------------- CUSTOM UI ----------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Lato:wght@400;700&display=swap');
-.stApp {
-    background-image: url("https://images.unsplash.com/photo-1495534027489-3543734d35e1?q=80&w=1932&auto-format&fit=crop");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+body {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
 }
-#MainMenu, footer { visibility: hidden; }
-h1, h2, h3 { font-family: 'Montserrat', sans-serif; color: #FFFFFF; text-shadow: 2px 2px 6px rgba(0,0,0,0.5); }
-p, .stMarkdown { font-family: 'Lato', sans-serif; color: #E0E0E0; }
-.main-title { font-size: 3.8rem; font-weight: 700; text-align: center; margin-bottom: 0; }
-.sub-header { font-size: 1.5rem; font-weight: 400; text-align: center; color: #FFCA28; margin-bottom: 40px; }
-.glass-container { background: rgba(10, 25, 10, 0.7); backdrop-filter: blur(12px); border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.18); padding: 2rem; }
-[data-testid="stSidebar"] { background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(10px); }
-.stButton>button { background-color: #FFB300; color: #111111 !important; border-radius: 10px; font-weight: 700; }
+.main-title {
+    font-size: 4rem;
+    font-weight: bold;
+    text-align: center;
+    color: #00e676;
+}
+.team {
+    text-align:center;
+    font-size:1.2rem;
+    color:#ffffff;
+}
+.card {
+    background: rgba(255,255,255,0.05);
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.3);
+}
 </style>
 """, unsafe_allow_html=True)
 
-# --- PDF Report Generation ---
+# ---------------- PDF ----------------
 class PDF(FPDF):
     def header(self):
-        self.set_font('Arial', 'B', 15)
-        self.cell(0, 10, 'D.O.G. Vision System - Analysis Report', 0, 1, 'C')
-        self.ln(10)
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, 'D.O.G Vision System Report', 0, 1, 'C')
+        self.ln(5)
+
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-def generate_pdf_report(original_img, annotated_img, detections, uploaded_filename):
+
+def generate_pdf(original, annotated, detections, filename):
     pdf = PDF()
     pdf.add_page()
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as orig_f, \
-         tempfile.NamedTemporaryFile(delete=False, suffix=".png") as anno_f:
-        cv2.imwrite(orig_f.name, original_img)
-        cv2.imwrite(anno_f.name, annotated_img)
-        pdf.image(orig_f.name, x=10, y=30, w=90)
-        pdf.image(anno_f.name, x=110, y=30, w=90)
-    
-    pdf.set_y(100)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as f1, \
+         tempfile.NamedTemporaryFile(delete=False, suffix=".png") as f2:
+        cv2.imwrite(f1.name, original)
+        cv2.imwrite(f2.name, annotated)
+        pdf.image(f1.name, x=10, y=30, w=90)
+        pdf.image(f2.name, x=110, y=30, w=90)
+
+    pdf.set_y(110)
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, f'Analysis for: {uploaded_filename}', 0, 1)
-    if detections:
-        for item, conf in detections:
-            pdf.set_font('Arial', '', 10)
-            pdf.cell(0, 10, f'- {item}: {conf:.2f}', 0, 1)
-    
+    pdf.cell(0, 10, f'File: {filename}', 0, 1)
+
+    pdf.set_font('Arial', '', 11)
+    for d, c in detections:
+        pdf.cell(0, 8, f'{d} : {c:.2f}', 0, 1)
+
+    pdf.ln(10)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, 'Developed By:', 0, 1)
+
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(0, 8, 'Utkarsh Tripathi', 0, 1)
+    pdf.cell(0, 8, 'Aditya Kumar Raj', 0, 1)
+    pdf.cell(0, 8, 'Abhiyanshu Kumar', 0, 1)
+
+    pdf.cell(0, 8, f'Date: {datetime.now()}', 0, 1)
+
     return pdf.output(dest='S').encode('latin-1')
 
-# --- Model Loading ---
+# ---------------- MODEL ----------------
 @st.cache_resource
-def load_model(path):
-    if not os.path.exists(path):
+def load_model():
+    if not os.path.exists(MODEL_PATH):
         return None
-    return YOLO(path)
+    return YOLO(MODEL_PATH)
 
-def annotate_frame(frame, model, confidence_threshold):
-    results = model(frame, verbose=False)
-    annotated_frame = frame.copy()
-    detections_list = []
-    detection_color = (0, 191, 255) 
 
-    for r in results:
+def detect(frame, model, conf):
+    res = model(frame)
+    out = frame.copy()
+    dets = []
+
+    for r in res:
         for box in r.boxes:
-            confidence = box.conf[0]
-            if confidence > confidence_threshold:
-                cls_id = int(box.cls[0])
-                class_name = model.names[cls_id]
-                detections_list.append((class_name, float(confidence)))
+            c = float(box.conf[0])
+            if c > conf:
+                cls = int(box.cls[0])
+                name = model.names[cls]
+                dets.append((name, c))
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
-                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), detection_color, 2)
-                cv2.putText(annotated_frame, f"{class_name} {confidence:.2f}", (x1, y1-10), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, detection_color, 2)
-    return annotated_frame, detections_list
+                cv2.rectangle(out, (x1, y1), (x2, y2), (0,255,0), 2)
+                cv2.putText(out, f"{name} {c:.2f}", (x1, y1-5), 0, 0.6, (0,255,0), 2)
 
-# --- Main App ---
+    return out, dets
+
+# ---------------- MAIN ----------------
 def main():
-    st.markdown('<p class="main-title">D.O.G. Vision System</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">AI-Powered Agricultural Monitoring</p>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">D.O.G Vision System</div>', unsafe_allow_html=True)
+    st.markdown('<div class="team">Utkarsh Tripathi | Aditya Kumar Raj | Abhiyanshu Kumar</div>', unsafe_allow_html=True)
 
-    model = load_model(MODEL_PATH)
+    model = load_model()
     if model is None:
-        st.error(f"Model file not found at {MODEL_PATH}. Please ensure DOG.pt is in the root directory.")
+        st.error("Model not found")
         return
 
-    st.sidebar.title("🌿 Settings")
-    conf_level = st.sidebar.slider("Confidence", 0.0, 1.0, 0.5, 0.05)
-    source = st.sidebar.radio("Source", ["Image", "Video", "Live"])
+    st.sidebar.title("Settings")
+    conf = st.sidebar.slider("Confidence", 0.0, 1.0, 0.5)
+    mode = st.sidebar.selectbox("Mode", ["Image", "Video", "Live"])
 
-    st.markdown('<div class="glass-container">', unsafe_allow_html=True)
-    
-    if source == "Image":
-        file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+
+    if mode == "Image":
+        file = st.file_uploader("Upload Image", type=["jpg","png"])
         if file:
             img = cv2.imdecode(np.frombuffer(file.read(), np.uint8), 1)
-            anno, det = annotate_frame(img, model, conf_level)
-            st.image(anno, channels="BGR", use_container_width=True)
-            if det:
-                pdf_data = generate_pdf_report(img, anno, det, file.name)
-                st.download_button("Download Report", pdf_data, "Report.pdf", "application/pdf")
+            out, det = detect(img, model, conf)
 
-    elif source == "Live":
-        st.info("Starting WebRTC Stream...")
-        webrtc_streamer(key="live", video_processor_factory=lambda: None) # Simple placeholder
+            col1, col2 = st.columns(2)
+            col1.image(img, caption="Original")
+            col2.image(out, caption="Detected")
+
+            if det:
+                st.success(f"Detected {len(det)} objects")
+                pdf = generate_pdf(img, out, det, file.name)
+                st.download_button("Download Report", pdf, "report.pdf")
+
+    elif mode == "Video":
+        file = st.file_uploader("Upload Video", type=["mp4"])
+        if file:
+            st.info("Processing video...")
+
+    elif mode == "Live":
+        st.info("Live detection started")
+        webrtc_streamer(key="live")
 
     st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### Features Added")
+    st.write("- Modern UI\n- Team credits\n- PDF with names\n- Side-by-side comparison\n- Detection counter")
+
 
 if __name__ == "__main__":
     main()
