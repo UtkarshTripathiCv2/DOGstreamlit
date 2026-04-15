@@ -51,14 +51,15 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-# --- Suggestions logic ---
-def get_suggestion(label):
-    suggestions = {
-        "disease": ("Use fungicide spray", "Apply neem oil weekly"),
-        "pest": ("Use pesticide", "Install pest traps"),
-        "dry": ("Increase watering", "Improve irrigation system")
+# --- Suggestions + Cure Logic ---
+def get_suggestion_and_cure(label):
+    data = {
+        "disease": ("Apply fungicide spray", "Use Carbendazim or Mancozeb weekly"),
+        "pest": ("Spray pesticide", "Use Imidacloprid or Neem oil treatment"),
+        "dry": ("Increase watering frequency", "Install drip irrigation system"),
+        "healthy": ("No action needed", "Maintain current care routine")
     }
-    return suggestions.get(label.lower(), ("Monitor regularly", "No action needed"))
+    return data.get(label.lower(), ("Monitor plant regularly", "General organic care recommended"))
 
 
 def generate_pdf(original, annotated, detections, filename):
@@ -76,13 +77,22 @@ def generate_pdf(original, annotated, detections, filename):
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 10, f'File: {filename}', 0, 1)
 
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, 'Detection Analysis:', 0, 1)
+
     pdf.set_font('Arial', '', 11)
     for d, c in detections:
-        sug, cure = get_suggestion(d)
+        suggestion, cure = get_suggestion_and_cure(d)
         pdf.cell(0, 8, f'{d} ({c:.2f})', 0, 1)
-        pdf.cell(0, 8, f'Suggestion: {sug}', 0, 1)
-        pdf.cell(0, 8, f'Cure: {cure}', 0, 1)
+        pdf.cell(0, 8, f'Suggestion: {suggestion}', 0, 1)
+        pdf.cell(0, 8, f'Cure/Treatment: {cure}', 0, 1)
         pdf.ln(2)
+
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, 'Final Recommendation:', 0, 1)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 8, 'Ensure regular monitoring of crops. Apply suggested treatments promptly to avoid spread of disease. Maintain proper irrigation, sunlight, and nutrient balance for optimal growth.')
 
     pdf.ln(5)
     pdf.set_font('Arial', 'B', 12)
@@ -156,13 +166,15 @@ def main():
             col3.metric("Status", "Healthy" if len(det)==0 else "Issue Found")
 
             if det:
-                st.subheader("Suggestions & Cure")
+                st.subheader("🌱 Suggestions & Cure")
                 for d, c in det:
-                    sug, cure = get_suggestion(d)
-                    st.write(f"**{d}** → Suggestion: {sug} | Cure: {cure}")
+                    suggestion, cure = get_suggestion_and_cure(d)
+                    st.write(f"**{d}** → Suggestion: {suggestion}")
+                    st.write(f"Cure: {cure}")
+                    st.write("---")
 
                 pdf = generate_pdf(img, out, det, file.name)
-                st.download_button("Download Report", pdf, "report.pdf")
+                st.download_button("📄 Download Full Report", pdf, "report.pdf")
 
     elif mode == "Live":
         st.info("Live detection started")
