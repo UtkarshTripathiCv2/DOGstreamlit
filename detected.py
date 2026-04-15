@@ -9,38 +9,33 @@ from fpdf import FPDF
 from datetime import datetime
 
 # ---------------- PAGE CONFIG ----------------
-st.set_page_config(
-    page_title="D.O.G Vision System",
-    page_icon="🌿",
-    layout="wide"
-)
+st.set_page_config(page_title="D.O.G Vision System", page_icon="🌿", layout="wide")
 
-# ---------------- PATH ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "DOG.pt")
 
-# ---------------- CUSTOM UI ----------------
+# ---------------- UI STYLE ----------------
 st.markdown("""
 <style>
-body {
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+.stApp {
+    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)),
+    url("https://images.unsplash.com/photo-1501004318641-b39e6451bec6");
+    background-size: cover;
 }
 .main-title {
-    font-size: 4rem;
-    font-weight: bold;
-    text-align: center;
-    color: #00e676;
-}
-.team {
     text-align:center;
-    font-size:1.2rem;
-    color:#ffffff;
+    font-size:4rem;
+    font-weight:bold;
+    background: linear-gradient(90deg,#00e676,#00c853,#69f0ae);
+    -webkit-background-clip: text;
+    color: transparent;
 }
-.card {
+.glass {
     background: rgba(255,255,255,0.05);
-    padding:20px;
-    border-radius:15px;
-    box-shadow:0 8px 32px rgba(0,0,0,0.3);
+    border-radius:20px;
+    backdrop-filter: blur(20px);
+    padding:25px;
+    margin-top:20px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -50,12 +45,20 @@ class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 14)
         self.cell(0, 10, 'D.O.G Vision System Report', 0, 1, 'C')
-        self.ln(5)
 
     def footer(self):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+# --- Suggestions logic ---
+def get_suggestion(label):
+    suggestions = {
+        "disease": ("Use fungicide spray", "Apply neem oil weekly"),
+        "pest": ("Use pesticide", "Install pest traps"),
+        "dry": ("Increase watering", "Improve irrigation system")
+    }
+    return suggestions.get(label.lower(), ("Monitor regularly", "No action needed"))
 
 
 def generate_pdf(original, annotated, detections, filename):
@@ -75,12 +78,15 @@ def generate_pdf(original, annotated, detections, filename):
 
     pdf.set_font('Arial', '', 11)
     for d, c in detections:
-        pdf.cell(0, 8, f'{d} : {c:.2f}', 0, 1)
+        sug, cure = get_suggestion(d)
+        pdf.cell(0, 8, f'{d} ({c:.2f})', 0, 1)
+        pdf.cell(0, 8, f'Suggestion: {sug}', 0, 1)
+        pdf.cell(0, 8, f'Cure: {cure}', 0, 1)
+        pdf.ln(2)
 
-    pdf.ln(10)
+    pdf.ln(5)
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 10, 'Developed By:', 0, 1)
-
     pdf.set_font('Arial', '', 11)
     pdf.cell(0, 8, 'Utkarsh Tripathi', 0, 1)
     pdf.cell(0, 8, 'Aditya Kumar Raj', 0, 1)
@@ -119,7 +125,7 @@ def detect(frame, model, conf):
 # ---------------- MAIN ----------------
 def main():
     st.markdown('<div class="main-title">D.O.G Vision System</div>', unsafe_allow_html=True)
-    st.markdown('<div class="team">Utkarsh Tripathi | Aditya Kumar Raj | Abhiyanshu Kumar</div>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align:center;color:white;">Utkarsh Tripathi | Aditya Kumar Raj | Abhiyanshu Kumar</p>', unsafe_allow_html=True)
 
     model = load_model()
     if model is None:
@@ -128,12 +134,14 @@ def main():
 
     st.sidebar.title("Settings")
     conf = st.sidebar.slider("Confidence", 0.0, 1.0, 0.5)
-    mode = st.sidebar.selectbox("Mode", ["Image", "Video", "Live"])
+    mode = st.sidebar.selectbox("Mode", ["Image", "Live"])
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
 
     if mode == "Image":
-        file = st.file_uploader("Upload Image", type=["jpg","png"])
+        st.markdown("### 📤 Upload Image for AI Analysis")
+        file = st.file_uploader("", type=["jpg","png","jpeg"])
+
         if file:
             img = cv2.imdecode(np.frombuffer(file.read(), np.uint8), 1)
             out, det = detect(img, model, conf)
@@ -142,15 +150,19 @@ def main():
             col1.image(img, caption="Original")
             col2.image(out, caption="Detected")
 
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Objects", len(det))
+            col2.metric("Avg Confidence", f"{np.mean([c for _,c in det]):.2f}" if det else "0")
+            col3.metric("Status", "Healthy" if len(det)==0 else "Issue Found")
+
             if det:
-                st.success(f"Detected {len(det)} objects")
+                st.subheader("Suggestions & Cure")
+                for d, c in det:
+                    sug, cure = get_suggestion(d)
+                    st.write(f"**{d}** → Suggestion: {sug} | Cure: {cure}")
+
                 pdf = generate_pdf(img, out, det, file.name)
                 st.download_button("Download Report", pdf, "report.pdf")
-
-    elif mode == "Video":
-        file = st.file_uploader("Upload Video", type=["mp4"])
-        if file:
-            st.info("Processing video...")
 
     elif mode == "Live":
         st.info("Live detection started")
@@ -158,10 +170,7 @@ def main():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("### Features Added")
-    st.write("- Modern UI\n- Team credits\n- PDF with names\n- Side-by-side comparison\n- Detection counter")
-
+    st.markdown("<hr><p style='text-align:center;color:gray;'>Developed by Utkarsh Tripathi • Aditya Kumar Raj • Abhiyanshu Kumar</p>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
