@@ -1,9 +1,18 @@
-streamlit>=1.33.0
-ultralytics>=8.1.0
+# Core Framework
+streamlit>=1.56.0
+tornado<6.2
+
+# AI & Vision
+ultralytics>=8.2.0
 opencv-python-headless
 numpy<2.0.0
 Pillow
 torch
 torchvision
-streamlit-webrtc
+
+# WebRTC & Media
+streamlit-webrtc>=0.64.6
+av
+
+# Utilities
 fpdf
